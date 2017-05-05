@@ -13,6 +13,8 @@ Gets to 99.5% test accuracy after 20 epochs.
 from __future__ import absolute_import
 from __future__ import print_function
 import numpy as np
+import tensorflow as tf
+tf.python.control_flow_ops = tf
 
 import random
 from keras.datasets import mnist
@@ -116,10 +118,11 @@ model = Model([input_a, input_b], distance)
 # train
 rms = RMSprop()
 model.compile(loss=contrastive_loss, optimizer=rms)
+# model.fit([tr_pairs[:, 0], tr_pairs[:, 1]], tr_y,
+#           batch_size=128, nb_epochs=epochs, validation_data=([te_pairs[:, 0], te_pairs[:, 1]], te_y))
+
 model.fit([tr_pairs[:, 0], tr_pairs[:, 1]], tr_y,
-          batch_size=128,
-          epochs=epochs,
-          validation_data=([te_pairs[:, 0], te_pairs[:, 1]], te_y))
+          batch_size=128, nb_epoch=epochs, validation_data=([te_pairs[:, 0], te_pairs[:, 1]], te_y))
 
 # compute final accuracy on training and test sets
 pred = model.predict([tr_pairs[:, 0], tr_pairs[:, 1]])
