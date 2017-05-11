@@ -1,7 +1,10 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import absolute_import
 from __future__ import print_function
 import numpy as np
 import tensorflow as tf
+import math
 tf.python.control_flow_ops = tf
 from keras.models import Model
 from keras.layers import Input, Lambda
@@ -9,6 +12,7 @@ from keras.optimizers import RMSprop
 from keras import backend as K
 from keras.applications.inception_v3 import InceptionV3
 from Cifar10Dataset import Cifar10DataSet
+from vector_similarity import TS_SS
 
 # 동일 item이라고 판단하는 margin 값
 margin = 1
@@ -25,6 +29,14 @@ def contrastive_loss(y_true, y_pred):
     '''Contrastive loss from Hadsell-et-al.'06
     http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
     '''
+
+    # y_pred는 distance이다
+
+    return K.mean(y_true * K.square(K.minimum(y_pred, margin)) +
+                  (1 - y_true) * K.square(K.maximum(margin - y_pred, 0)))
+
+def robust_contrastive_loss(y_true, y_pred):
+    # y_pred는 distance이다
 
     return K.mean(y_true * K.square(y_pred) +
                   (1 - y_true) * K.square(K.maximum(margin - y_pred, 0)))
@@ -45,12 +57,14 @@ def compute_accuracy(predictions, labels):
 
     temp = labels[labels[predictions.ravel() < margin]]
 
-    return 0 if temp is None else temp.mean()
+    return 0 if temp is None or len(temp) == 0 else temp.mean()
 
 def main():
-    epochs = 1
-    batch_size = 2
+    epochs = 20
+    batch_size = 2 # 일반적으로 32
 
+    # Cifar10 contains 60,000 images
+    # 1 class가 6000 image를 담고 있음
     dataset = Cifar10DataSet(training_size = 10, validation_size = 4, test_size = 20)
 
     # network definition
@@ -66,14 +80,20 @@ def main():
     processed_a = base_network(input_a)
     processed_b = base_network(input_b)
 
-    distance = Lambda(euclidean_distance,
-                      output_shape=eucl_dist_output_shape)([processed_a, processed_b])
+    # distance = Lambda(euclidean_distance,
+    #                   output_shape=eucl_dist_output_shape)([processed_a, processed_b])
+
+    distance = Lambda(TS_SS)([processed_a, processed_b])
+
 
     model = Model([input_a, input_b], distance)
 
     rms = RMSprop()
     # configure the learning process
-    model.compile(loss=contrastive_loss, optimizer=rms)
+    #model.compile(loss=contrastive_loss, optimizer=rms)
+    model.compile(loss=robust_contrastive_loss, optimizer=rms)
+
+
 
     print("fit start")
     num_train_steps = dataset.training_size // batch_size
@@ -120,7 +140,10 @@ def main():
     print('* Accuracy on training set: %0.2f%%' % (100 * tr_acc))
     print('* Accuracy on test set: %0.2f%%' % (100 * te_acc))
 
+
+
     # serialize model to JSON
+    print("saving model...")
     model_json = model.to_json()
     with open("model.json", "w") as json_file:
         json_file.write(model_json)
