@@ -15,7 +15,7 @@ from Cifar10Dataset import Cifar10DataSet
 from vector_similarity import TS_SS
 
 # 동일 item이라고 판단하는 margin 값
-margin = 1
+margin = 40
 
 def euclidean_distance(vects):
     x, y = vects
