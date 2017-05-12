@@ -3,4 +3,4 @@
 *.pyc
 *.png
 *.gif
-/.idea/
+/.idea/*
