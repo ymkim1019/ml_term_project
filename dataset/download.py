@@ -26,7 +26,7 @@ def main(url_fname, retrieval_meta_fname, pair_meta_fname_list, save_dir):
             if r.status_code == 200:
                 image_type = imghdr.what(None, r.content)
                 if image_type is not None:
-                    p = os.path.join(images_dir, str(item_id) + '.' + image_type)
+                    p = os.path.join(images_dir, "%09d"%int(item_id) + '.' + image_type)
                     # print(p)
                     with open(p, 'wb') as f:
                         f.write(r.content)
@@ -98,11 +98,15 @@ def main(url_fname, retrieval_meta_fname, pair_meta_fname_list, save_dir):
                 download(user_photo_id, user_photo_url, cnt, n, save_dir, meta_fname, bbox=(width, top, height, left))
 
 if __name__ == '__main__':
-    # main(sys.args[1])
-    url_fname = "photos\\photos.txt"
-    retrieval_meta_fname = "meta\\meta\\json\\retrieval_outerwear.json"
-    pair_meta_fname_list = list()
-    pair_meta_fname_list.append("meta\\meta\\json\\test_pairs_outerwear.json")
-    pair_meta_fname_list.append("meta\\meta\\json\\train_pairs_outerwear.json")
-    save_dir = "images\\outerwear"
-    main(url_fname, retrieval_meta_fname, pair_meta_fname_list, save_dir)
+    category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings', 'skirts', 'tops']
+    for category in category_list:
+        url_fname = "photos\\photos.txt"
+        retrieval_meta_fname = "meta\\meta\\json\\retrieval_" + category + ".json"
+        pair_meta_fname_list = list()
+        pair_meta_fname_list.append("meta\\meta\\json\\test_pairs_" + category + ".json")
+        pair_meta_fname_list.append("meta\\meta\\json\\train_pairs_" + category + ".json")
+        save_dir = "images\\" + category
+        if os.path.isdir(save_dir) is False:
+            os.mkdir(save_dir)
+
+        main(url_fname, retrieval_meta_fname, pair_meta_fname_list, save_dir)
