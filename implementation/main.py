@@ -3,7 +3,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 import tensorflow as tf
-tf.python.control_flow_ops = tf
+#tf.python.control_flow_ops = tf
 from keras.models import Model
 from keras.layers import Input, Lambda
 from keras.optimizers import RMSprop
@@ -14,6 +14,7 @@ from Street2ShopDataset import Street2ShopDataset
 from NBatchLogger import NBatchLogger
 import os
 import sys
+import math
 
 margin = 40
 
@@ -62,14 +63,14 @@ def main():
     category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
                      'skirts', 'tops']
     retrieval_meta_fname_list = [
-        os.path.abspath("..\\dataset\\meta\\meta\\json\\retrieval_" + category + "_cleaned.json") for category in
+        os.path.abspath("../dataset/meta/meta/json/retrieval_" + category + "_cleaned.json") for category in
         category_list]
-    train_pair_meta_fname_list = [os.path.abspath("..\\dataset\\meta\\meta\\json\\train_pairs_" + category + "_cleaned.json")
+    train_pair_meta_fname_list = [os.path.abspath("../dataset/meta/meta/json/train_pairs_" + category + "_cleaned.json")
                             for category in category_list]
     test_pair_meta_fname_list = [
-        os.path.abspath("..\\dataset\\meta\\meta\\json\\test_pairs_" + category + "_cleaned.json")
+        os.path.abspath("../dataset/meta/meta/json/test_pairs_" + category + "_cleaned.json")
         for category in category_list]
-    img_dir_list = [os.path.abspath("..\\dataset\\images\\" + category) for category in category_list]
+    img_dir_list = [os.path.abspath("../dataset/images/" + category) for category in category_list]
     train_dataset = Street2ShopDataset(retrieval_meta_fname_list, train_pair_meta_fname_list, img_dir_list, batch_size)
     test_dataset = Street2ShopDataset(retrieval_meta_fname_list, test_pair_meta_fname_list, img_dir_list, batch_size)
 
@@ -102,8 +103,16 @@ def main():
     # num_train_steps = dataset.training_size // batch_size
     # num_val_steps = dataset.validation_size // batch_size
     out_batch = NBatchLogger()
+    '''
+    model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()), epochs=epochs
+                        , validation_data=test_dataset.pair_generator(), validation_steps=math.ceil(test_dataset.get_num_of_samples())
+			, verbose=2, callbacks=[out_batch])
+    
+    model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()/batch_size), epochs=epochs
+                        , verbose=2, callbacks=[out_batch])
+    '''    
     model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=2, epochs=epochs
-                        , validation_data=test_dataset.pair_generator(), validation_steps=2, verbose=2, callbacks=[out_batch])
+                        , verbose=2, callbacks=[out_batch])
 
     print("fit end")
 

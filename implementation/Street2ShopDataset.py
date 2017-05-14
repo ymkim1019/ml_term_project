@@ -59,6 +59,10 @@ class Street2ShopDataset:
             else:
                 return os.path.join(root, temp[0])
 
+    def get_num_of_samples(self):
+        return len(self.x)
+
+
     def pair_generator(self):
         while True:
             n = len(self.x)

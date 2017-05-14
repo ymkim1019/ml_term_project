@@ -1,3 +1,4 @@
+import datetime
 from keras.callbacks import Callback
 
 class NBatchLogger(Callback):
@@ -23,9 +24,11 @@ class NBatchLogger(Callback):
 
     def on_train_begin(self, logs={}):
         self.cnt = 0
+        print("train begin at ", datetime.datetime.now())
 
     def on_epoch_end(self, epoch, logs=None):
         self.cnt = 0
+        print("epoch ends at ", datetime.datetime.now())
 
     def on_batch_end(self,batch,logs={}):
         # print(self.params)
