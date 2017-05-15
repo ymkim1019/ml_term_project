@@ -9,6 +9,7 @@ from keras.layers import Input, Lambda
 from keras.optimizers import RMSprop
 from keras import backend as K
 from keras.applications.inception_v3 import InceptionV3
+from keras.callbacks import EarlyStopping, ModelCheckpoint
 from vector_similarity import TS_SS
 from Street2ShopDataset import Street2ShopDataset
 from NBatchLogger import NBatchLogger
@@ -16,7 +17,7 @@ import os
 import math
 
 margin = 40
-epochs = 20
+epochs = 100
 batch_size = 32
 validation_size = 0.2
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -100,13 +101,19 @@ def main():
     print("fit start")
     num_train_steps = math.ceil(dataset.get_num_of_test_samples() / batch_size)
     num_val_steps = math.ceil(dataset.get_num_of_validation_samples() / batch_size)
+
+    # keras callbacks
     out_batch = NBatchLogger()
+    stop_callbacks = EarlyStopping(monitor='val_loss', patience=5, verbose=1, mode='min')
+    filepath = "weights-improvement.hdf5"
+    # filepath = "weights-improvement-{epoch:03d}-{val_loss:.2f}.hdf5"
+    checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 
     model.fit_generator(dataset.test_pair_generator()
                         , steps_per_epoch=num_train_steps
                         , epochs=epochs, validation_data=dataset.validation_pair_generator()
                         , validation_steps=num_val_steps
-                        , verbose=2, callbacks=[out_batch])
+                        , verbose=2, callbacks=[out_batch, stop_callbacks, checkpoint])
 
     print("fit end")
 
@@ -145,7 +152,7 @@ def main():
     # print('* Accuracy on test set: %0.2f%%' % (100 * te_acc))
 
     # serialize model to JSON
-    print("saving model...")
+    print("saving full model...")
     model.save("model.h5")
     print("Saved..")
 
