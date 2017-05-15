@@ -13,10 +13,12 @@ from vector_similarity import TS_SS
 from Street2ShopDataset import Street2ShopDataset
 from NBatchLogger import NBatchLogger
 import os
-import sys
 import math
 
 margin = 40
+epochs = 20
+batch_size = 32
+validation_size = 0.2
 tf.logging.set_verbosity(tf.logging.ERROR)
 
 def euclidean_distance(vects):
@@ -58,30 +60,24 @@ def compute_accuracy(predictions, labels):
     return 0 if temp is None or len(temp) == 0 else temp.mean()
 
 def main():
-    epochs = 20
-    batch_size = 32
-
     # category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
     #                  'skirts', 'tops']
-    category_list = ['dresses']
+    category_list = ['bags']
     retrieval_meta_fname_list = [
         os.path.abspath("../dataset/meta/meta/json/retrieval_" + category + "_cleaned.json") for category in
         category_list]
-    train_pair_meta_fname_list = [os.path.abspath("../dataset/meta/meta/json/train_pairs_" + category + "_cleaned.json")
+    pair_meta_fname_list = [os.path.abspath("../dataset/meta/meta/json/train_pairs_" + category + "_cleaned.json")
                             for category in category_list]
-    test_pair_meta_fname_list = [
-        os.path.abspath("../dataset/meta/meta/json/test_pairs_" + category + "_cleaned.json")
-        for category in category_list]
     img_dir_list = [os.path.abspath("../dataset/images/" + category) for category in category_list]
-    train_dataset = Street2ShopDataset(retrieval_meta_fname_list, train_pair_meta_fname_list, img_dir_list, batch_size)
-    test_dataset = Street2ShopDataset(retrieval_meta_fname_list, test_pair_meta_fname_list, img_dir_list, batch_size)
+    dataset = Street2ShopDataset(retrieval_meta_fname_list, pair_meta_fname_list, img_dir_list, batch_size
+                                 , validation_size)
 
     # network definition
-    base_network = create_base_network(train_dataset.get_input_dim())
+    base_network = create_base_network(dataset.get_input_dim())
 
     # input tensors
-    input_a = Input(shape=train_dataset.get_input_dim())
-    input_b = Input(shape=train_dataset.get_input_dim())
+    input_a = Input(shape=dataset.get_input_dim())
+    input_b = Input(shape=dataset.get_input_dim())
 
     # because we re-use the same instance `base_network`,
     # the weights of the network
@@ -102,25 +98,15 @@ def main():
     model.compile(loss=robust_contrastive_loss, optimizer=rms)
 
     print("fit start")
-    # num_train_steps = dataset.training_size // batch_size
-    # num_val_steps = dataset.validation_size // batch_size
+    num_train_steps = math.ceil(dataset.get_num_of_test_samples() / batch_size)
+    num_val_steps = math.ceil(dataset.get_num_of_validation_samples() / batch_size)
     out_batch = NBatchLogger()
-    # model.fit_generator(train_dataset.pair_generator()
-    #                     , steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()/batch_size),
-    #                     epochs=epochs, verbose=2, callbacks=[out_batch])
 
-    model.fit_generator(train_dataset.pair_generator()
-                        , steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()/batch_size)
-                        , epochs=epochs, validation_data=test_dataset.pair_generator()
-                        , validation_steps=math.ceil(test_dataset.get_num_of_samples()/batch_size)
+    model.fit_generator(dataset.test_pair_generator()
+                        , steps_per_epoch=num_train_steps
+                        , epochs=epochs, validation_data=dataset.validation_pair_generator()
+                        , validation_steps=num_val_steps
                         , verbose=2, callbacks=[out_batch])
-
-    # model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()/batch_size), epochs=epochs
-    #                     , verbose=2, callbacks=[out_batch])
-    #
-    # model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=2, epochs=epochs
-    #                     , verbose=2)#, callbacks=[out_batch])
-
 
     print("fit end")
 

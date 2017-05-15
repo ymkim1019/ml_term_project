@@ -8,14 +8,17 @@ from PIL import Image
 
 
 class Street2ShopDataset:
-    def __init__(self, retrieval_meta_fname_list, pair_meta_fname_list, img_dir_list, batch_size=32):
+    def __init__(self, retrieval_meta_fname_list, pair_meta_fname_list, img_dir_list, batch_size=32, validation_size=None):
         self.retrieval_meta_fname_list = retrieval_meta_fname_list
         self.pair_meta_fname_list = pair_meta_fname_list
         self.img_dir_list = img_dir_list
         self.product_photo_dict = dict()
         self.x = []
+        self.x_val = []
         self.y = []
+        self.y_val = []
         self.batch_size = batch_size
+        self.validation_size = validation_size # should be less than 1.0
         self.hx = 299
         self.hy = 299
 
@@ -36,6 +39,7 @@ class Street2ShopDataset:
             with open(self.pair_meta_fname_list[category_idx]) as f:
                 js = json.loads(f.read())
                 n = len(js)
+                val_interval = None if self.validation_size is None else np.ceil(1.0/self.validation_size)
                 for i in range(n):
                     # positive pair
                     positive_pair = [js[i]['photo'], product_photo_dict[js[i]['product']], category_idx]
@@ -44,42 +48,38 @@ class Street2ShopDataset:
                     while i == temp:
                         temp = np.random.randint(n)
                     negative_pair = [js[i]['photo'], product_photo_dict[js[temp]['product']], category_idx]
-                    self.x.append(positive_pair)
-                    self.x.append(negative_pair)
-                    self.y.append(1)
-                    self.y.append(0)
+                    if val_interval is not None and i % val_interval == 0:
+                        self.x_val.append(positive_pair)
+                        self.x_val.append(negative_pair)
+                        self.y_val.append(1)
+                        self.y_val.append(0)
+                    else:
+                        self.x.append(positive_pair)
+                        self.x.append(negative_pair)
+                        self.y.append(1)
+                        self.y.append(0)
 
         print('load_pair_meta done..')
 
-    def getImgPath(self, photo_id, img_dir):
-        for root, dirs, files in os.walk(img_dir):
-            temp = [fname for fname in files if "%09d"%int(photo_id) in fname]
-
-            if len(temp) == 0:
-                print('getImgPath fail!! :', photo_id)
-                return None
-            else:
-                return os.path.join(root, temp[0])
-
-    def get_num_of_samples(self):
+    def get_num_of_test_samples(self):
         return len(self.x)
 
+    def get_num_of_validation_samples(self):
+        return len(self.x_val)
 
-    def pair_generator(self):
+    def test_pair_generator(self):
         while True:
             n = len(self.x)
+            if n == 0:
+                break
             indexes = np.random.randint(n, size=n) # shuffle
             left = []
             right = []
             labels = []
             for i in range(n):
-                # try:
                 path = os.path.join(self.img_dir_list[self.x[indexes[i]][2]],
                                     "%09d" % int(self.x[indexes[i]][0]) + '.jpeg')
-                # path = self.getImgPath(self.x[indexes[i]][0], self.img_dir_list[self.x[indexes[i]][2]])
                 im_left = Image.open(path)
-                # im_left = im_left.resize((160, 160))
-                # im_left.load()
                 if im_left.format == 'GIF' or im_left.format == 'PNG':
                     im_left = im_left.convert('RGB')
                 elif im_left.format == 'PNG':
@@ -89,20 +89,17 @@ class Street2ShopDataset:
                     background.paste(im_left, mask=im_left.split()[-1])  # 3 is the alpha channel
                     im_left = background
 
-                # path = self.getImgPath(self.x[indexes[i]][1], self.img_dir_list[self.x[indexes[i]][2]])
                 path = os.path.join(self.img_dir_list[self.x[indexes[i]][2]],
                                     "%09d" % int(self.x[indexes[i]][1]) + '.jpeg')
                 im_right = Image.open(path)
                 if im_right.format == 'GIF' or im_right.format == 'PNG':
                     im_right = im_right.convert('RGB')
                 elif im_right.format == 'PNG':
-                    print(im_right.mode, path)
+                    # print(im_right.mode, path)
                     im_right.load()
                     background = Image.new("RGB", im_right.size, (255, 255, 255))
                     background.paste(im_right, mask=im_right.split()[-1])  # 3 is the alpha channel
                     im_right = background
-                # im_right = im_right.resize((160, 160))
-                # im_right.load()
                 left.append(np.asarray(im_left, dtype="int32"))
                 right.append(np.asarray(im_right, dtype="int32"))
                 labels.append(self.y[indexes[i]])
@@ -115,11 +112,52 @@ class Street2ShopDataset:
                     left = []
                     right = []
                     labels = []
-                # except Exception as e:
-                #     print('left', left)
-                #     print('right', right)
-                #     print('labels', labels)
-                #     print(e)
+
+    def validation_pair_generator(self):
+        while True:
+            n = len(self.x_val)
+            if n == 0:
+                break
+            indexes = np.random.randint(n, size=n) # shuffle
+            left = []
+            right = []
+            labels = []
+            for i in range(n):
+                path = os.path.join(self.img_dir_list[self.x_val[indexes[i]][2]],
+                                    "%09d" % int(self.x_val[indexes[i]][0]) + '.jpeg')
+                im_left = Image.open(path)
+                if im_left.format == 'GIF' or im_left.format == 'PNG':
+                    im_left = im_left.convert('RGB')
+                elif im_left.format == 'PNG':
+                    # print(im_left.mode, path)
+                    im_left.load()
+                    background = Image.new("RGB", im_left.size, (255, 255, 255))
+                    background.paste(im_left, mask=im_left.split()[-1])  # 3 is the alpha channel
+                    im_left = background
+
+                path = os.path.join(self.img_dir_list[self.x_val[indexes[i]][2]],
+                                    "%09d" % int(self.x_val[indexes[i]][1]) + '.jpeg')
+                im_right = Image.open(path)
+                if im_right.format == 'GIF' or im_right.format == 'PNG':
+                    im_right = im_right.convert('RGB')
+                elif im_right.format == 'PNG':
+                    # print(im_right.mode, path)
+                    im_right.load()
+                    background = Image.new("RGB", im_right.size, (255, 255, 255))
+                    background.paste(im_right, mask=im_right.split()[-1])  # 3 is the alpha channel
+                    im_right = background
+                left.append(np.asarray(im_left, dtype="int32"))
+                right.append(np.asarray(im_right, dtype="int32"))
+                labels.append(self.y_val[indexes[i]])
+
+                if (i+1) % self.batch_size == 0 or i == n-1:
+                    left = np.array(left)
+                    right = np.array(right)
+                    labels = np.array(labels)
+                    yield [left, right], labels
+                    left = []
+                    right = []
+                    labels = []
 
 if __name__ == '__main__':
     category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
