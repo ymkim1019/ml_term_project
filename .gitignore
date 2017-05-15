@@ -3,5 +3,9 @@
 *.pyc
 *.png
 *.gif
-/.idea/*
+*.h5
+model*.*
+.idea
+implementation/.idea/
 /dataset/images/*
+*.*~

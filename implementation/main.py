@@ -17,6 +17,7 @@ import sys
 import math
 
 margin = 40
+tf.logging.set_verbosity(tf.logging.ERROR)
 
 def euclidean_distance(vects):
     x, y = vects
@@ -31,11 +32,11 @@ def contrastive_loss(y_true, y_pred):
     http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
     '''
 
-    return K.mean(y_true * K.square(K.minimum(y_pred, margin)) +
+    return K.mean(y_true * K.square(y_pred) +
                   (1 - y_true) * K.square(K.maximum(margin - y_pred, 0)))
 
 def robust_contrastive_loss(y_true, y_pred):
-    return K.mean(y_true * K.square(y_pred) +
+    return K.mean(y_true * K.square(K.minimum(y_pred, margin)) +
                   (1 - y_true) * K.square(K.maximum(margin - y_pred, 0)))
 
 def create_base_network(input_dim):
@@ -57,11 +58,12 @@ def compute_accuracy(predictions, labels):
     return 0 if temp is None or len(temp) == 0 else temp.mean()
 
 def main():
-    epochs = 10
-    batch_size = 2
+    epochs = 20
+    batch_size = 32
 
-    category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
-                     'skirts', 'tops']
+    # category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
+    #                  'skirts', 'tops']
+    category_list = ['dresses']
     retrieval_meta_fname_list = [
         os.path.abspath("../dataset/meta/meta/json/retrieval_" + category + "_cleaned.json") for category in
         category_list]
@@ -87,10 +89,10 @@ def main():
     processed_a = base_network(input_a)
     processed_b = base_network(input_b)
 
-    # distance = Lambda(euclidean_distance,
-    #                   output_shape=eucl_dist_output_shape)([processed_a, processed_b])
+    distance = Lambda(euclidean_distance,
+                      output_shape=eucl_dist_output_shape)([processed_a, processed_b])
 
-    distance = Lambda(TS_SS)([processed_a, processed_b])
+    #distance = Lambda(TS_SS)([processed_a, processed_b])
 
     model = Model([input_a, input_b], distance)
 
@@ -103,16 +105,22 @@ def main():
     # num_train_steps = dataset.training_size // batch_size
     # num_val_steps = dataset.validation_size // batch_size
     out_batch = NBatchLogger()
-    '''
-    model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()), epochs=epochs
-                        , validation_data=test_dataset.pair_generator(), validation_steps=math.ceil(test_dataset.get_num_of_samples())
-			, verbose=2, callbacks=[out_batch])
-    
-    model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()/batch_size), epochs=epochs
+    # model.fit_generator(train_dataset.pair_generator()
+    #                     , steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()/batch_size),
+    #                     epochs=epochs, verbose=2, callbacks=[out_batch])
+
+    model.fit_generator(train_dataset.pair_generator()
+                        , steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()/batch_size)
+                        , epochs=epochs, validation_data=test_dataset.pair_generator()
+                        , validation_steps=math.ceil(test_dataset.get_num_of_samples()/batch_size)
                         , verbose=2, callbacks=[out_batch])
-    '''    
-    model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=2, epochs=epochs
-                        , verbose=2, callbacks=[out_batch])
+
+    # model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=math.ceil(train_dataset.get_num_of_samples()/batch_size), epochs=epochs
+    #                     , verbose=2, callbacks=[out_batch])
+    #
+    # model.fit_generator(train_dataset.pair_generator(), steps_per_epoch=2, epochs=epochs
+    #                     , verbose=2)#, callbacks=[out_batch])
+
 
     print("fit end")
 

@@ -16,11 +16,13 @@ class Street2ShopDataset:
         self.x = []
         self.y = []
         self.batch_size = batch_size
+        self.hx = 299
+        self.hy = 299
 
         self.load_pair_meta()
 
     def get_input_dim(self):
-        return 299, 299, 3
+        return self.hx, self.hy, 3
 
     def load_pair_meta(self):
         num_of_categories = len(self.retrieval_meta_fname_list)
@@ -71,12 +73,36 @@ class Street2ShopDataset:
             right = []
             labels = []
             for i in range(n):
-                path = self.getImgPath(self.x[indexes[i]][0], self.img_dir_list[self.x[indexes[i]][2]])
+                # try:
+                path = os.path.join(self.img_dir_list[self.x[indexes[i]][2]],
+                                    "%09d" % int(self.x[indexes[i]][0]) + '.jpeg')
+                # path = self.getImgPath(self.x[indexes[i]][0], self.img_dir_list[self.x[indexes[i]][2]])
                 im_left = Image.open(path)
-                im_left.load()
-                path = self.getImgPath(self.x[indexes[i]][1], self.img_dir_list[self.x[indexes[i]][2]])
+                # im_left = im_left.resize((160, 160))
+                # im_left.load()
+                if im_left.format == 'GIF' or im_left.format == 'PNG':
+                    im_left = im_left.convert('RGB')
+                elif im_left.format == 'PNG':
+                    print(im_left.mode, path)
+                    im_left.load()
+                    background = Image.new("RGB", im_left.size, (255, 255, 255))
+                    background.paste(im_left, mask=im_left.split()[-1])  # 3 is the alpha channel
+                    im_left = background
+
+                # path = self.getImgPath(self.x[indexes[i]][1], self.img_dir_list[self.x[indexes[i]][2]])
+                path = os.path.join(self.img_dir_list[self.x[indexes[i]][2]],
+                                    "%09d" % int(self.x[indexes[i]][1]) + '.jpeg')
                 im_right = Image.open(path)
-                im_right.load()
+                if im_right.format == 'GIF' or im_right.format == 'PNG':
+                    im_right = im_right.convert('RGB')
+                elif im_right.format == 'PNG':
+                    print(im_right.mode, path)
+                    im_right.load()
+                    background = Image.new("RGB", im_right.size, (255, 255, 255))
+                    background.paste(im_right, mask=im_right.split()[-1])  # 3 is the alpha channel
+                    im_right = background
+                # im_right = im_right.resize((160, 160))
+                # im_right.load()
                 left.append(np.asarray(im_left, dtype="int32"))
                 right.append(np.asarray(im_right, dtype="int32"))
                 labels.append(self.y[indexes[i]])
@@ -89,13 +115,20 @@ class Street2ShopDataset:
                     left = []
                     right = []
                     labels = []
+                # except Exception as e:
+                #     print('left', left)
+                #     print('right', right)
+                #     print('labels', labels)
+                #     print(e)
 
 if __name__ == '__main__':
     category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
                      'skirts', 'tops']
-    retrieval_meta_fname_list = [os.path.abspath("..\\dataset\\meta\\meta\\json\\retrieval_" + category + "_cleaned.json") for category in category_list]
-    pair_meta_fname_list = [os.path.abspath("..\\dataset\\meta\\meta\\json\\train_pairs_" + category + "_cleaned.json") for category in category_list]
-    img_dir_list = [os.path.abspath("..\\dataset\\images\\" + category) for category in category_list]
+    retrieval_meta_fname_list = [os.path.abspath("../dataset/meta/meta/json/retrieval_" + category + "_cleaned.json") for category in category_list]
+    pair_meta_fname_list = [os.path.abspath("../dataset/meta/meta/json/train_pairs_" + category + "_cleaned.json") for category in category_list]
+    img_dir_list = [os.path.abspath("../dataset/images/" + category) for category in category_list]
 
     dataset = Street2ShopDataset(retrieval_meta_fname_list, pair_meta_fname_list, img_dir_list)
-    print(next(dataset.pair_generator()))
+    for i in range(math.ceil(dataset.get_num_of_samples()/32)):
+        print(i, '/', math.ceil(dataset.get_num_of_samples()/32))
+        next(dataset.pair_generator())
