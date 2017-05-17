@@ -61,13 +61,42 @@ class Street2ShopDataset:
 
         print('load_pair_meta done..')
 
-    def get_num_of_test_samples(self):
+    def get_num_of_train_samples(self):
         return len(self.x)
 
     def get_num_of_validation_samples(self):
         return len(self.x_val)
 
-    def test_pair_generator(self):
+    def test_x_generator(self):
+        n = len(self.x)
+        if n == 0:
+            return
+        left = []
+        right = []
+        for i in range(n):
+            path = os.path.join(self.img_dir_list[self.x[i][2]],
+                                "%09d" % int(self.x[i][0]) + '.jpeg')
+            im_left = Image.open(path)
+            if im_left.format == 'GIF' or im_left.format == 'PNG':
+                im_left = im_left.convert('RGB')
+            elif im_left.format == 'PNG':
+                # print(im_left.mode, path)
+                im_left.load()
+                background = Image.new("RGB", im_left.size, (255, 255, 255))
+                background.paste(im_left, mask=im_left.split()[-1])  # 3 is the alpha channel
+                im_left = background
+
+            left.append(np.asarray(im_left, dtype="int32"))
+            right.append(np.asarray(im_left, dtype="int32")) # dummy
+
+            if (i+1) % self.batch_size == 0 or i == n-1:
+                left = np.array(left)
+                right = np.array(right)
+                yield [left, right]
+                left = []
+                right = []
+
+    def train_pair_generator(self):
         while True:
             n = len(self.x)
             if n == 0:
@@ -83,7 +112,7 @@ class Street2ShopDataset:
                 if im_left.format == 'GIF' or im_left.format == 'PNG':
                     im_left = im_left.convert('RGB')
                 elif im_left.format == 'PNG':
-                    print(im_left.mode, path)
+                    # print(im_left.mode, path)
                     im_left.load()
                     background = Image.new("RGB", im_left.size, (255, 255, 255))
                     background.paste(im_left, mask=im_left.split()[-1])  # 3 is the alpha channel
