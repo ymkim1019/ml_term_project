@@ -23,6 +23,9 @@ class Street2ShopDataset:
         self.hy = 299
 
         self.load_pair_meta()
+        self.num_of_product_in_category = list()
+        self.num_of_pairs_in_category = list()
+        self.product_indexes_in_category = list()
 
     def get_input_dim(self):
         return self.hx, self.hy, 3
@@ -33,12 +36,17 @@ class Street2ShopDataset:
             product_photo_dict = dict()
             with open(self.retrieval_meta_fname_list[category_idx]) as f:
                 js = json.loads(f.read())
+                self.num_of_product_in_category.append(len(js))
+                product_indexes = list()
                 for each in js:
+                    product_indexes.append(each['product'])
                     product_photo_dict[each['product']] = each['photo']
+                self.product_indexes_in_category.append(product_indexes)
 
             with open(self.pair_meta_fname_list[category_idx]) as f:
                 js = json.loads(f.read())
                 n = len(js)
+                self.num_of_pairs_in_category.append(n)
                 val_interval = None if self.validation_size is None else np.ceil(1.0/self.validation_size)
                 for i in range(n):
                     # positive pair
@@ -61,21 +69,63 @@ class Street2ShopDataset:
 
         print('load_pair_meta done..')
 
+    def get_num_of_pairs_in_category(self, category_index):
+        self.num_of_pairs_in_category[category_index]
+
+    def get_product_indexes_in_category(self, category_index):
+        return self.product_indexes_in_category(category_index)
+
     def get_num_of_train_samples(self):
         return len(self.x)
 
     def get_num_of_validation_samples(self):
         return len(self.x_val)
 
-    def test_x_generator(self):
-        n = len(self.x)
+    def get_num_of_product_in_category(self, category_idx):
+        return self.num_of_product_in_category[category_idx]
+
+    def product_x_generator(self, category_idx):
+        with open(self.retrieval_meta_fname_list[category_idx]) as f:
+            js = json.loads(f.read())
+            photo_indexes = [each['photo'] for each in js]
+
+        n = len(photo_indexes)
+        left = list()
+        right = list()
+        for i in range(n):
+            path = os.path.join(self.img_dir_list[category_idx], "%09d" % int(photo_indexes[i] + '.jpeg'))
+            im = Image.open(path)
+            if im.format == 'GIF' or im.format == 'PNG':
+                im = im.convert('RGB')
+            elif im.format == 'PNG':
+                im.load()
+                background = Image.new("RGB", im.size, (255, 255, 255))
+                background.paste(im, mask=im.split()[-1])  # 3 is the alpha channel
+                im = background
+
+            left.append(np.asarray(im, dtype="int32"))
+            right.append(np.asarray(im, dtype="int32"))  # dummy
+
+            if (i + 1) % self.batch_size == 0 or i == n - 1:
+                left = np.array(left)
+                right = np.array(right)
+                yield left, right
+                left = []
+                right = []
+
+    def test_x_generator(self, category_idx):
+        with open(self.pair_meta_fname_list[category_idx]) as f:
+            js = json.loads(f.read())
+            photo_indexes = [each[0] for each in js]
+
+        n = len(photo_indexes)
         if n == 0:
             return
         left = []
         right = []
         for i in range(n):
-            path = os.path.join(self.img_dir_list[self.x[i][2]],
-                                "%09d" % int(self.x[i][0]) + '.jpeg')
+            path = os.path.join(self.img_dir_list[category_idx],
+                                "%09d" % int(photo_indexes[i]) + '.jpeg')
             im_left = Image.open(path)
             if im_left.format == 'GIF' or im_left.format == 'PNG':
                 im_left = im_left.convert('RGB')

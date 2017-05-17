@@ -1,11 +1,18 @@
+# -*- coding: utf-8 -*-
+
 from keras.models import load_model, Model
 from keras.layers import Input
 from Street2ShopDataset import Street2ShopDataset
 import os
 import math
 from keras import backend as K
+from PIL import Image
+import numpy as np
 
-batch_size = 32
+batch_size = 2
+
+def product_x_generator(retrieval_meta_fname, img_dir, batch_size, out_photo_indexes)
+    import json
 
 def main():
     # category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
@@ -21,29 +28,16 @@ def main():
 
     model = load_model('model.h5')
     model.summary()
-    # model.layers.pop()
-    # model.outputs = [model.layers[-2].get_output_at(0)]
-    get_2rd_layer_output = K.function([model.layers[0].input],
-                                      [model.layers[2].output_at(0)])
-    layer_output = get_2rd_layer_output([next(dataset.test_x_generator())])[0]
+    new_model = Model(model.input, model.layers[3].get_input_at(0))
 
-    print('predict start')
-    new_model = Model(model.input, model.layers[2].get_output_at(0))
-    y = new_model.predict(next(dataset.test_x_generator()))
-    print('predict end')
+    // 각 카테고리의 product 이미지에 대해 vector를 계산한다
+    img_vec_dicts = list()
+    for i, category in enumerate(category_list):
+        product_feature_vectors, _ = new_model.predict_generator(dataset.product_x_generator(i)
+                                           , steps=math.ceil(dataset.get_num_of_product_in_category(i) / batch_size))
 
-    # model_input = Input(shape=dataset.get_input_dim())
-    # model_output = model.layers[2](model_input)
-    # # new_model = Model(model.input, model.layers[2].get_output_at(0))
-    # new_model = Model(model_input, model_output)
-    # print('predict start')
-    # y = new_model.predict_generator(dataset.test_x_generator()
-    #                                 , steps=math.ceil(dataset.get_num_of_train_samples() / batch_size))
-    # print('predict end')
-
-    print(y.type)
-    print(y.shape)
-
+        test_feature_vectors, _ = new_model.predict_generator(dataset.test_x_generator(i)
+                                           , steps=math.ceil(dataset.get_num_of_pairs_in_category(i) / batch_size))
 
 if __name__ == '__main__':
     main()
