@@ -15,9 +15,10 @@ from Street2ShopDataset import Street2ShopDataset
 from NBatchLogger import NBatchLogger
 import os
 import math
+import matplotlib.pyplot as plt
 
 margin = 40
-epochs = 100
+epochs = 1000
 batch_size = 32
 validation_size = 0.2
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -61,9 +62,9 @@ def compute_accuracy(predictions, labels):
     return 0 if temp is None or len(temp) == 0 else temp.mean()
 
 def main():
-    # category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
-    #                  'skirts', 'tops']
-    category_list = ['bags']
+    category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
+                     'skirts', 'tops']
+    # category_list = ['eyewear']
     retrieval_meta_fname_list = [
         os.path.abspath("../dataset/meta/meta/json/retrieval_" + category + "_cleaned.json") for category in
         category_list]
@@ -104,18 +105,26 @@ def main():
 
     # keras callbacks
     out_batch = NBatchLogger()
-    stop_callbacks = EarlyStopping(monitor='val_loss', patience=5, verbose=1, mode='min')
+    stop_callbacks = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='min')
     filepath = "weights-improvement.hdf5"
     # filepath = "weights-improvement-{epoch:03d}-{val_loss:.2f}.hdf5"
     checkpoint = ModelCheckpoint(filepath, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
 
-    model.fit_generator(dataset.test_pair_generator()
+    history = model.fit_generator(dataset.test_pair_generator()
                         , steps_per_epoch=num_train_steps
                         , epochs=epochs, validation_data=dataset.validation_pair_generator()
                         , validation_steps=num_val_steps
                         , verbose=2, callbacks=[out_batch, stop_callbacks, checkpoint])
 
     print("fit end")
+
+    # plt.plot(history.history['loss'])
+    # plt.plot(history.history['val_loss'])
+    # plt.title('model loss')
+    # plt.ylabel('loss')
+    # plt.xlabel('epoch')
+    # plt.legend(['train', 'test'], loc='upper left')
+    # plt.savefig('history.png')
 
     #compute final accuracy on training and test sets
     # num_steps = dataset.training_size // batch_size
