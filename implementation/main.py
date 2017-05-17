@@ -118,6 +118,11 @@ def main():
 
     print("fit end")
 
+    # serialize model to JSON
+    print("saving full model...")
+    model.save("model.h5")
+    print("Saved..")
+
     # plt.plot(history.history['loss'])
     # plt.plot(history.history['val_loss'])
     # plt.title('model loss')
@@ -125,45 +130,6 @@ def main():
     # plt.xlabel('epoch')
     # plt.legend(['train', 'test'], loc='upper left')
     # plt.savefig('history.png')
-
-    #compute final accuracy on training and test sets
-    # num_steps = dataset.training_size // batch_size
-    # pred_pair_gen = dataset.pair_generator(dataset.x_train, dataset.y_train, dataset.training_size, batch_size)
-    # i = 0
-    # pred = []
-    # labels = []
-    # for x, y in pred_pair_gen:
-    #     if i == num_steps:
-    #         break
-    #     pred.append(model.predict(x, verbose=1))
-    #     labels.append(y)
-    #     i += 1
-    # pred = np.vstack(pred)
-    # labels = np.hstack(labels)
-    # tr_acc = compute_accuracy(pred, labels)
-    #
-    # num_steps = dataset.test_size // batch_size
-    # pred_pair_gen = dataset.pair_generator(dataset.x_test, dataset.y_test, dataset.test_size, batch_size)
-    # i = 0
-    # pred = []
-    # labels = []
-    # for x, y in pred_pair_gen:
-    #     if i == num_steps:
-    #         break
-    #     pred.append(model.predict(x, verbose=1))
-    #     labels.append(y)
-    #     i += 1
-    # pred = np.vstack(pred)
-    # labels = np.hstack(labels)
-    # te_acc = compute_accuracy(pred, labels)
-    #
-    # print('* Accuracy on training set: %0.2f%%' % (100 * tr_acc))
-    # print('* Accuracy on test set: %0.2f%%' % (100 * te_acc))
-
-    # serialize model to JSON
-    print("saving full model...")
-    model.save("model.h5")
-    print("Saved..")
 
 if __name__ == '__main__':
     main()

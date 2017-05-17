@@ -22,10 +22,11 @@ class Street2ShopDataset:
         self.hx = 299
         self.hy = 299
 
-        self.load_pair_meta()
         self.num_of_product_in_category = list()
         self.num_of_pairs_in_category = list()
         self.product_indexes_in_category = list()
+
+        self.load_pair_meta()
 
     def get_input_dim(self):
         return self.hx, self.hy, 3
@@ -89,29 +90,39 @@ class Street2ShopDataset:
             js = json.loads(f.read())
             photo_indexes = [each['photo'] for each in js]
 
-        n = len(photo_indexes)
-        left = list()
-        right = list()
-        for i in range(n):
-            path = os.path.join(self.img_dir_list[category_idx], "%09d" % int(photo_indexes[i] + '.jpeg'))
-            im = Image.open(path)
-            if im.format == 'GIF' or im.format == 'PNG':
-                im = im.convert('RGB')
-            elif im.format == 'PNG':
-                im.load()
-                background = Image.new("RGB", im.size, (255, 255, 255))
-                background.paste(im, mask=im.split()[-1])  # 3 is the alpha channel
-                im = background
+        while True:
+            batch_cnt = 1
+            n = len(photo_indexes)
+            left = list()
+            right = list()
+            for i in range(n):
+                path = os.path.join(self.img_dir_list[category_idx], "%09d" % int(photo_indexes[i]) + '.jpeg')
+                im = Image.open(path)
+                if im.format == 'GIF' or im.format == 'PNG':
+                    im = im.convert('RGB')
+                elif im.format == 'PNG':
+                    im.load()
+                    background = Image.new("RGB", im.size, (255, 255, 255))
+                    background.paste(im, mask=im.split()[-1])  # 3 is the alpha channel
+                    im = background
 
-            left.append(np.asarray(im, dtype="int32"))
-            right.append(np.asarray(im, dtype="int32"))  # dummy
+                # print(i, path)
 
-            if (i + 1) % self.batch_size == 0 or i == n - 1:
-                left = np.array(left)
-                right = np.array(right)
-                yield left, right
-                left = []
-                right = []
+                if np.asarray(im, dtype="int32").shape != (self.hx,self.hy,3):
+                    print('invalid shape!!!', path)
+                left.append(np.asarray(im, dtype="int32"))
+                right.append(np.asarray(im, dtype="int32"))  # dummy
+
+                if (i + 1) % self.batch_size == 0 or i == n - 1:
+                    left = np.array(left)
+                    # for each in left:
+                    #     print(each.shape)
+                    # print('batch_cnt', batch_cnt)
+                    batch_cnt += 1
+                    right = np.array(right)
+                    yield [left, right]
+                    left = []
+                    right = []
 
     def test_x_generator(self, category_idx):
         with open(self.pair_meta_fname_list[category_idx]) as f:
