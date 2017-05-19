@@ -9,3 +9,4 @@ model*.*
 implementation/.idea/
 /dataset/images/*
 *.*~
+*.zip
