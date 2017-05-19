@@ -25,8 +25,28 @@ class Street2ShopDataset:
         self.num_of_product_in_category = list()
         self.num_of_pairs_in_category = list()
         self.product_indexes_in_category = list()
+        self.test_photo_indexes_in_category = list()
+        self.test_product_indexes_in_category = list()
 
         self.load_pair_meta()
+
+    def load_image(self, path):
+        try:
+            im = Image.open(path)
+            if im.format == 'GIF' or im.format == 'PNG':
+                im = im.convert('RGB')
+            elif im.format == 'PNG':
+                im.load()
+                background = Image.new("RGB", im.size, (255, 255, 255))
+                background.paste(im, mask=im.split()[-1])  # 3 is the alpha channel
+                im = background
+
+            arr = np.asarray(im, dtype="int32")
+            return arr
+        except Exception as e:
+            print(e)
+            print(path)
+            return None
 
     def get_input_dim(self):
         return self.hx, self.hy, 3
@@ -40,12 +60,14 @@ class Street2ShopDataset:
                 self.num_of_product_in_category.append(len(js))
                 product_indexes = list()
                 for each in js:
-                    product_indexes.append(each['product'])
+                    product_indexes.append(each['photo']) # photo id of product
                     product_photo_dict[each['product']] = each['photo']
                 self.product_indexes_in_category.append(product_indexes)
 
             with open(self.pair_meta_fname_list[category_idx]) as f:
                 js = json.loads(f.read())
+                self.test_photo_indexes_in_category.append([each['photo'] for each in js])
+                self.test_product_indexes_in_category.append([product_photo_dict[each['product']] for each in js])
                 n = len(js)
                 self.num_of_pairs_in_category.append(n)
                 val_interval = None if self.validation_size is None else np.ceil(1.0/self.validation_size)
@@ -70,11 +92,17 @@ class Street2ShopDataset:
 
         print('load_pair_meta done..')
 
+    def get_test_product_indexes_in_category(self, category_idx):
+        return self.test_product_indexes_in_category[category_idx]
+
+    def get_test_photo_indexes_in_category(self, category_idx):
+        return self.test_photo_indexes_in_category[category_idx]
+
     def get_num_of_pairs_in_category(self, category_index):
-        self.num_of_pairs_in_category[category_index]
+        return self.num_of_pairs_in_category[category_index]
 
     def get_product_indexes_in_category(self, category_index):
-        return self.product_indexes_in_category(category_index)
+        return self.product_indexes_in_category[category_index]
 
     def get_num_of_train_samples(self):
         return len(self.x)
@@ -91,71 +119,57 @@ class Street2ShopDataset:
             photo_indexes = [each['photo'] for each in js]
 
         while True:
-            batch_cnt = 1
             n = len(photo_indexes)
             left = list()
             right = list()
+            cnt = 0;
             for i in range(n):
                 path = os.path.join(self.img_dir_list[category_idx], "%09d" % int(photo_indexes[i]) + '.jpeg')
-                im = Image.open(path)
-                if im.format == 'GIF' or im.format == 'PNG':
-                    im = im.convert('RGB')
-                elif im.format == 'PNG':
-                    im.load()
-                    background = Image.new("RGB", im.size, (255, 255, 255))
-                    background.paste(im, mask=im.split()[-1])  # 3 is the alpha channel
-                    im = background
+                im = self.load_image(path)
+                if im not None:
+                    left.append(im)
+                    right.append(im)  # dummy
+                    cnt += 1
 
-                # print(i, path)
-
-                if np.asarray(im, dtype="int32").shape != (self.hx,self.hy,3):
-                    print('invalid shape!!!', path)
-                left.append(np.asarray(im, dtype="int32"))
-                right.append(np.asarray(im, dtype="int32"))  # dummy
-
-                if (i + 1) % self.batch_size == 0 or i == n - 1:
+                if cnt % self.batch_size == 0 or i == n - 1:
                     left = np.array(left)
-                    # for each in left:
-                    #     print(each.shape)
-                    # print('batch_cnt', batch_cnt)
-                    batch_cnt += 1
                     right = np.array(right)
                     yield [left, right]
                     left = []
                     right = []
 
     def test_x_generator(self, category_idx):
-        with open(self.pair_meta_fname_list[category_idx]) as f:
-            js = json.loads(f.read())
-            photo_indexes = [each[0] for each in js]
+        photo_indexes = self.test_photo_indexes_in_category[category_idx]
 
-        n = len(photo_indexes)
-        if n == 0:
-            return
-        left = []
-        right = []
-        for i in range(n):
-            path = os.path.join(self.img_dir_list[category_idx],
-                                "%09d" % int(photo_indexes[i]) + '.jpeg')
-            im_left = Image.open(path)
-            if im_left.format == 'GIF' or im_left.format == 'PNG':
-                im_left = im_left.convert('RGB')
-            elif im_left.format == 'PNG':
-                # print(im_left.mode, path)
-                im_left.load()
-                background = Image.new("RGB", im_left.size, (255, 255, 255))
-                background.paste(im_left, mask=im_left.split()[-1])  # 3 is the alpha channel
-                im_left = background
+        while True:
+            n = len(photo_indexes)
+            if n == 0:
+                return
+            left = []
+            right = []
+            for i in range(n):
+                path = os.path.join(self.img_dir_list[category_idx],
+                                    "%09d" % int(photo_indexes[i]) + '.jpeg')
+                im_left = self.load_image()
+                im_left = Image.open(path)
+                if im_left.format == 'GIF' or im_left.format == 'PNG':
+                    im_left = im_left.convert('RGB')
+                elif im_left.format == 'PNG':
+                    # print(im_left.mode, path)
+                    im_left.load()
+                    background = Image.new("RGB", im_left.size, (255, 255, 255))
+                    background.paste(im_left, mask=im_left.split()[-1])  # 3 is the alpha channel
+                    im_left = background
 
-            left.append(np.asarray(im_left, dtype="int32"))
-            right.append(np.asarray(im_left, dtype="int32")) # dummy
+                left.append(np.asarray(im_left, dtype="int32"))
+                right.append(np.asarray(im_left, dtype="int32")) # dummy
 
-            if (i+1) % self.batch_size == 0 or i == n-1:
-                left = np.array(left)
-                right = np.array(right)
-                yield [left, right]
-                left = []
-                right = []
+                if (i+1) % self.batch_size == 0 or i == n-1:
+                    left = np.array(left)
+                    right = np.array(right)
+                    yield [left, right]
+                    left = []
+                    right = []
 
     def train_pair_generator(self):
         while True:
