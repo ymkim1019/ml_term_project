@@ -1,6 +1,8 @@
 import json
 from os import listdir
 from os.path import isfile, join, splitext
+from PIL import Image
+import numpy as np
 
 def load_image(path):
     try:
@@ -38,18 +40,19 @@ def main(retrieval_meta_fname, pair_meta_fname_list, img_dir):
                     print(img_dir, ':', i+1, '/', n)
                 if each['product'] in products \
                         and load_image(join(img_dir, "%09d" % int(each['photo']) + '.jpeg')) is not None:
-                    new_js += each
+                    new_js.append(each)
 
         with open(pair_meta_fname, 'w') as f:
             json.dump(new_js, f)
 
 if __name__ == '__main__':
     category_list = ['pants', 'outerwear', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings', 'skirts', 'tops']
+    # category_list = ['pants']
     for category in category_list:
         retrieval_meta_fname = "meta/meta/json/retrieval_" + category + "_cleaned.json"
         pair_meta_fname_list = list()
         pair_meta_fname_list.append("meta/meta/json/train_pairs_" + category + "_cleaned.json")
-        pair_meta_fname_list.append("meta/meta/json/test_pairs_" + category + "._cleanedjson")
+        pair_meta_fname_list.append("meta/meta/json/test_pairs_" + category + "_cleaned.json")
         img_dir = "images/" + category
         main(retrieval_meta_fname, pair_meta_fname_list, img_dir)
         print(category + ' cleaned..')
