@@ -126,7 +126,7 @@ class Street2ShopDataset:
             for i in range(n):
                 path = os.path.join(self.img_dir_list[category_idx], "%09d" % int(photo_indexes[i]) + '.jpeg')
                 im = self.load_image(path)
-                if im not None:
+                if im is not None:
                     left.append(im)
                     right.append(im)  # dummy
                     cnt += 1
@@ -170,6 +170,54 @@ class Street2ShopDataset:
                     yield [left, right]
                     left = []
                     right = []
+
+    def train_category_generator(self):
+        while True:
+            n = len(self.x)
+            if n == 0:
+                break
+            indexes = np.random.randint(n, size=n) # shuffle
+            x = []
+            y = []
+            for i in range(n):
+                path = os.path.join(self.img_dir_list[self.x[indexes[i]][2]],
+                                    "%09d" % int(self.x[indexes[i]][0]) + '.jpeg')
+                im = self.load_image(path)
+                x.append(im)
+                temp = np.zeros(11)
+                temp[self.x[indexes[i]][2]] = 1
+                y.append(temp)
+
+                if (i+1) % self.batch_size == 0 or i == n-1:
+                    x = np.array(x)
+                    y = np.array(y)
+                    yield x, y
+                    x = []
+                    y = []
+
+    def val_category_generator(self):
+        while True:
+            n = len(self.x_val)
+            if n == 0:
+                break
+            indexes = np.random.randint(n, size=n) # shuffle
+            x = []
+            y = []
+            for i in range(n):
+                path = os.path.join(self.img_dir_list[self.x_val[indexes[i]][2]],
+                                    "%09d" % int(self.x_val[indexes[i]][0]) + '.jpeg')
+                im = self.load_image(path)
+                x.append(im)
+                temp = np.zeros(11)
+                temp[self.x_val[indexes[i]][2]] = 1
+                y.append(temp)
+
+                if (i+1) % self.batch_size == 0 or i == n-1:
+                    x = np.array(x)
+                    y = np.array(y)
+                    yield x, y
+                    x = []
+                    y = []
 
     def train_pair_generator(self):
         while True:
