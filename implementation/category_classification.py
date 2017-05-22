@@ -6,20 +6,16 @@ from __future__ import absolute_import
 from __future__ import print_function
 import tensorflow as tf
 from keras.models import Model
-from keras.layers import Input, Lambda, Dense, GlobalAveragePooling2D
+from keras.layers import Input, Dense, GlobalAveragePooling2D
 from keras.optimizers import RMSprop, SGD
 from keras.applications.inception_v3 import InceptionV3
 from keras.callbacks import EarlyStopping, ModelCheckpoint
-from keras import backend as K
-from vector_similarity import TS_SS
 from Street2ShopDataset import Street2ShopDataset
 from NBatchLogger import NBatchLogger
 import os
 import math
-import pickle
 import argparse
 
-epochs = 12000
 batch_size = 32
 validation_size = 0.2
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -102,8 +98,8 @@ def main():
             layer.trainable = True
 
         print("2nd fit start")
-        stop_callbacks = EarlyStopping(monitor='acc', patience=10, verbose=1, mode='min', min_delta=0.0001)
-        checkpoint = ModelCheckpoint(args.weightfile, monitor='acc', verbose=1, save_best_only=True, mode='min')
+        stop_callbacks = EarlyStopping(monitor='val_acc', patience=10, mode='max', min_delta=0.001, verbose=1)
+        checkpoint = ModelCheckpoint(args.weightfile, monitor='val_acc', verbose=1, save_best_only=True, mode='min')
         num_train_steps = math.ceil(dataset.get_num_of_train_samples() / batch_size)
         num_val_steps = math.ceil(dataset.get_num_of_validation_samples() / batch_size)
 
@@ -126,7 +122,7 @@ def main():
 
         # serialize model to JSON
         print("saving full model...")
-        # model.save(args.modelfile)
+        model.save(args.modelfile)
         print("Saved..")
     else:
         model = load_model(args.modelfile, custom_objects={'contrastive_loss': contrastive_loss})

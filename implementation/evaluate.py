@@ -11,7 +11,15 @@ import numpy as np
 from scipy import spatial
 
 batch_size = 32
-margin = 40
+margin = 40.0
+
+def contrastive_loss(y_true, y_pred):
+    '''Contrastive loss from Hadsell-et-al.'06
+    http://yann.lecun.com/exdb/publis/pdf/hadsell-chopra-lecun-06.pdf
+    '''
+
+    return K.mean(y_true * K.square(y_pred) +
+                  (1 - y_true) * K.maximum(K.square(margin) - K.square(y_pred), 0))
 
 def robust_contrastive_loss(y_true, y_pred):
     return K.mean(y_true * K.square(K.minimum(y_pred, margin)) +
@@ -28,7 +36,7 @@ def cos_distance(vects):
 def main():
     # category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
     #                  'skirts', 'tops']
-    category_list = ['dresses']
+    category_list = ['belts']
     retrieval_meta_fname_list = [
         os.path.abspath("../dataset/meta/meta/json/retrieval_" + category + "_cleaned.json") for category in
         category_list]
@@ -37,9 +45,9 @@ def main():
     img_dir_list = [os.path.abspath("../dataset/images/" + category) for category in category_list]
     dataset = Street2ShopDataset(retrieval_meta_fname_list, pair_meta_fname_list, img_dir_list, batch_size)
 
-    model = load_model('model.h5', custom_objects={'robust_contrastive_loss': robust_contrastive_loss})
+    model = load_model('model.h5', custom_objects={'contrastive_loss': contrastive_loss})
     print('model loaded..')
-    model.load_weights('weights-improvement-allcategories.hdf5')
+    model.load_weights('weights-belts.hdf5')
     print('weights loaded..')
     model.summary()
     new_model = Model(model.input, model.layers[3].get_input_at(0))
