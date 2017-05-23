@@ -98,8 +98,8 @@ def main():
             layer.trainable = True
 
         print("2nd fit start")
-        stop_callbacks = EarlyStopping(monitor='val_acc', patience=10, mode='max', min_delta=0.001, verbose=1)
-        checkpoint = ModelCheckpoint(args.weightfile, monitor='val_acc', verbose=1, save_best_only=True, mode='min')
+        stop_callbacks = EarlyStopping(monitor='val_loss', patience=10, mode='min', min_delta=0.0001, verbose=1)
+        checkpoint = ModelCheckpoint(args.weightfile, monitor='val_loss', verbose=1, save_best_only=True, mode='min')
         num_train_steps = math.ceil(dataset.get_num_of_train_samples() / batch_size)
         num_val_steps = math.ceil(dataset.get_num_of_validation_samples() / batch_size)
 

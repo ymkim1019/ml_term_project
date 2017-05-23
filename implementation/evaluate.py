@@ -36,7 +36,7 @@ def cos_distance(vects):
 def main():
     # category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings',
     #                  'skirts', 'tops']
-    category_list = ['belts']
+    category_list = ['bags']
     retrieval_meta_fname_list = [
         os.path.abspath("../dataset/meta/meta/json/retrieval_" + category + "_cleaned.json") for category in
         category_list]
