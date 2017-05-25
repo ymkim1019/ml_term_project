@@ -64,6 +64,8 @@ def main():
     parser.add_argument("-batch_size", "--batch_size", default=32, type=int)
     parser.add_argument("-data_augmentation", "--data_augmentation", default=False, type=bool)
     parser.add_argument("-data_augmentation_ratio", "--data_augmentation_ratio", default=1, type=int)
+    parser.add_argument("-negative_pair_ratio", "--negative_pair_ratio", default=1, type=int)
+    parser.add_argument("-augmented_pair", "--augmented_pair", default=False, type=bool)
 
     args = parser.parse_args()
 
@@ -76,7 +78,9 @@ def main():
     img_dir = os.path.abspath("../dataset/images/" + args.category)
     dataset = Street2ShopDataset([retrieval_meta_fname], [pair_meta_fname], [img_dir], batch_size, validation_size,
                                  data_augmentation=args.data_augmentation
-                                 , data_augmentation_ratio=args.data_augmentation_ratio)
+                                 , data_augmentation_ratio=args.data_augmentation_ratio
+                                 , negative_pair_ratio=args.negative_pair_ratio
+                                 , augmented_pair=args.augmented_pair)
 
     # load the base model (state of the art CNN + 11 category classifier)
     base_model = load_model(args.base_model_file)

@@ -9,7 +9,8 @@ from keras.preprocessing.image import ImageDataGenerator
 
 class Street2ShopDataset:
     def __init__(self, retrieval_meta_fname_list, pair_meta_fname_list, img_dir_list, batch_size=32
-                 , validation_size=None, data_augmentation=False, data_augmentation_ratio=1):
+                 , validation_size=None, data_augmentation=False, data_augmentation_ratio=1, negative_pair_ratio=1
+                 , augmented_pair=False):
         self.retrieval_meta_fname_list = retrieval_meta_fname_list
         self.pair_meta_fname_list = pair_meta_fname_list
         self.img_dir_list = img_dir_list
@@ -22,6 +23,8 @@ class Street2ShopDataset:
         self.validation_size = validation_size # should be less than 1.0
         self.hx = 299
         self.hy = 299
+        self.negative_pair_ratio = negative_pair_ratio
+        self.augmented_pair = augmented_pair
 
         self.num_of_product_in_category = list()
         self.num_of_pairs_in_category = list()
@@ -70,6 +73,8 @@ class Street2ShopDataset:
                     product_photo_dict[each['product']] = each['photo']
                 self.product_indexes_in_category.append(product_indexes)
 
+            product_photo_included = []
+
             with open(self.pair_meta_fname_list[category_idx]) as f:
                 js = json.loads(f.read())
                 self.test_photo_indexes_in_category.append([each['photo'] for each in js])
@@ -80,21 +85,52 @@ class Street2ShopDataset:
                 for i in range(n):
                     # positive pair
                     positive_pair = [js[i]['photo'], product_photo_dict[js[i]['product']], category_idx]
-                    # negative pair
-                    temp = np.random.randint(n)
-                    while i == temp:
-                        temp = np.random.randint(n)
-                    negative_pair = [js[i]['photo'], product_photo_dict[js[temp]['product']], category_idx]
                     if val_interval is not None and i % val_interval == 0:
                         self.x_val.append(positive_pair)
-                        self.x_val.append(negative_pair)
                         self.y_val.append(1)
-                        self.y_val.append(0)
                     else:
                         self.x.append(positive_pair)
-                        self.x.append(negative_pair)
                         self.y.append(1)
-                        self.y.append(0)
+
+                    # negative pair
+                    for j in range(self.negative_pair_ratio):
+                        temp = np.random.randint(n)
+                        while i == temp:
+                            temp = np.random.randint(n)
+                        negative_pair = [js[i]['photo'], product_photo_dict[js[temp]['product']], category_idx]
+
+                        if val_interval is not None and i % val_interval == 0:
+                            self.x_val.append(negative_pair)
+                            self.y_val.append(0)
+                        else:
+                            self.x.append(negative_pair)
+                            self.y.append(0)
+
+                if self.augmented_pair is True:
+                    n = len(product_indexes)
+                    for i in range(n):
+                        # positive pair
+                        positive_pair = [product_indexes[i], product_indexes[i], category_idx]
+                        if val_interval is not None and i % val_interval == 0:
+                            self.x_val.append(positive_pair)
+                            self.y_val.append(1)
+                        else:
+                            self.x.append(positive_pair)
+                            self.y.append(1)
+
+                        # negative pair
+                        for j in range(self.negative_pair_ratio):
+                            temp = np.random.randint(n)
+                            while i == temp:
+                                temp = np.random.randint(n)
+                            negative_pair = [product_indexes[i], product_indexes[temp], category_idx]
+
+                            if val_interval is not None and i % val_interval == 0:
+                                self.x_val.append(negative_pair)
+                                self.y_val.append(0)
+                            else:
+                                self.x.append(negative_pair)
+                                self.y.append(0)
 
         print('load_pair_meta done..')
 
@@ -285,6 +321,7 @@ class Street2ShopDataset:
             left = []
             right = []
             labels = []
+            cnt = 0
             for i in range(n):
                 path = os.path.join(self.img_dir_list[x[indexes[i]][2]],
                                     "%09d" % int(x[indexes[i]][0]) + '.jpeg')
@@ -293,11 +330,14 @@ class Street2ShopDataset:
                 path = os.path.join(self.img_dir_list[x[indexes[i]][2]],
                                     "%09d" % int(x[indexes[i]][1]) + '.jpeg')
                 im_right = self.load_image(path)
-                left.append(np.asarray(im_left, dtype="int32"))
-                right.append(np.asarray(im_right, dtype="int32"))
-                labels.append(y[indexes[i]])
 
-                if (i+1) % batch_size == 0 or i == n-1:
+                if im_left is not None and im_right is not None:
+                    left.append(np.asarray(im_left, dtype="int32"))
+                    right.append(np.asarray(im_right, dtype="int32"))
+                    labels.append(y[indexes[i]])
+                    cnt += 1
+
+                if cnt % batch_size == 0 or i == n-1:
                     left = np.array(left)
                     right = np.array(right)
                     labels = np.array(labels)
@@ -319,6 +359,7 @@ class Street2ShopDataset:
                     left = []
                     right = []
                     labels = []
+                    cnt = 0
 
     def train_pair_generator(self):
         return self.pair_generator(self.x, self.y)
