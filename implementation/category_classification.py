@@ -9,7 +9,8 @@ from keras.models import Model, load_model
 from keras.layers import Input, Dense, GlobalAveragePooling2D
 from keras.optimizers import RMSprop, SGD
 from keras.applications.inception_v3 import InceptionV3
-from keras.applications.resnet50 import ResNet50
+# from keras.applications.resnet50 import ResNet50
+from resnet50 import ResNet50
 from keras.applications.vgg19 import VGG19
 from keras.callbacks import EarlyStopping, ModelCheckpoint
 from Street2ShopDataset import Street2ShopDataset
