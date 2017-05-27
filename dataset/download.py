@@ -33,19 +33,19 @@ def main(url_fname, retrieval_meta_fname, pair_meta_fname_list, save_dir):
                         f.close()
                     # resize
                     im = Image.open(p)
-                    if bbox is None:
-                        # product image
-                        im.thumbnail((256, 256))
-                    else:
+                    # if bbox is None:
+                    #     # product image
+                    #     im.thumbnail((256, 256))
+                    # else:
+                    if bbox is not None:
                         # user image
                         im = im.crop((left, top, left+width, top+height))
-                        im.thumbnail((256, 256))
-
-                    background = Image.new('RGB', (299, 299), "white")
-                    offset = (int((299 - im.width) / 2), int((299 - im.height) / 2))
-                    background.paste(im, offset)
-                    im.close()
-                    background.save(p)
+                        im.thumbnail((299, 299))
+                        background = Image.new('RGB', (299, 299), "white")
+                        offset = (int((299 - im.width) / 2), int((299 - im.height) / 2))
+                        background.paste(im, offset)
+                        im.close()
+                        background.save(p)
                 # else:
                 #     logging.error('%s\t%s\tunknown_type' % (item_id, url))
             else:
@@ -98,14 +98,15 @@ def main(url_fname, retrieval_meta_fname, pair_meta_fname_list, save_dir):
                 download(user_photo_id, user_photo_url, cnt, n, save_dir, meta_fname, bbox=(width, top, height, left))
 
 if __name__ == '__main__':
-    category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings', 'skirts', 'tops']
+    # category_list = ['outerwear', 'pants', 'bags', 'belts', 'dresses', 'eyewear', 'footwear', 'hats', 'leggings', 'skirts', 'tops']
+    category_list = ['outerwear']
     for category in category_list:
         url_fname = "photos\\photos.txt"
         retrieval_meta_fname = "meta\\meta\\json\\retrieval_" + category + ".json"
         pair_meta_fname_list = list()
         pair_meta_fname_list.append("meta\\meta\\json\\test_pairs_" + category + ".json")
         pair_meta_fname_list.append("meta\\meta\\json\\train_pairs_" + category + ".json")
-        save_dir = "images\\" + category
+        save_dir = "orig_images\\" + category
         if os.path.isdir(save_dir) is False:
             os.mkdir(save_dir)
 
